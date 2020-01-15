@@ -29,7 +29,7 @@ unsigned long int last = 0;
 
 
 /* YOU WILL NEED TO CHANGE THIS TO YOUR COMPUTER'S IP! */
-const IPAddress outIp(192,168,0,202);        // remote IP of your computer
+const IPAddress outIp(192,168,0,231);        // remote IP of your computer
 
 //this should match the port to listen on in the python sketch
 const unsigned int outPort = 5005;          // remote port to receive OSC
@@ -45,6 +45,15 @@ void reconnect (){
 void send_OSC (int value) {
   OSCMessage msg(MY_ID);
   msg.add(value);
+  Udp.beginPacket(outIp, outPort);
+  msg.send(Udp);
+  Udp.endPacket();
+  msg.empty();
+}
+
+void send_OSC_bang () {
+  OSCMessage msg(MY_ID);
+  msg.add("800 1");
   Udp.beginPacket(outIp, outPort);
   msg.send(Udp);
   Udp.endPacket();
@@ -74,7 +83,8 @@ void get_BPM() {
   if (irValue > 50000) {
     //mocking hearbeat
     if(millis() - last > (1000.0 / (beatAvg/60.0))) {
-      send_OSC(beatAvg);
+      //send_OSC(beatAvg);
+      send_OSC_bang();
       Serial.println("Beat! " + String(millis() - last) + " "+  String(1000.0 / (beatAvg/60.0)));
       last = millis();
     }
@@ -82,9 +92,10 @@ void get_BPM() {
 }
 
 void get_BPM_mock() {
-  send_OSC(80);
+  //send_OSC(80);
+  send_OSC_bang();
   Serial.println("send");
-  delay(1000);
+  delay(750);
 }
 
 void setup() {
