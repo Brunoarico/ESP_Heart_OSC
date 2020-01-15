@@ -7,13 +7,16 @@
 #include <heartRate.h>
 
 #define MY_ID "/BPM1"
+#define WARNING_MOCK_LED LED_BUILTIN
 
-char ssid[] = "";          // your network SSID (name)
-char pass[] = "";         // your network password
+char ssid[] = "Teste-Lab";          // your network SSID (name)
+char pass[] = "makerLab*";         // your network password
 
 WiFiUDP Udp;
 
 MAX30105 particleSensor;
+
+bool mock = false;
 
 const byte RATE_SIZE = 20; //Increase this for more averaging. 4 is good.
 float rates[RATE_SIZE]; //Array of heart rates
@@ -26,11 +29,11 @@ unsigned long int last = 0;
 
 
 /* YOU WILL NEED TO CHANGE THIS TO YOUR COMPUTER'S IP! */
-const IPAddress outIp(127,0,0,1);        // remote IP of your computer
+const IPAddress outIp(192,168,0,202);        // remote IP of your computer
 
 //this should match the port to listen on in the python sketch
-const unsigned int outPort = 9999;          // remote port to receive OSC
-const unsigned int localPort = 8888;        // local port to listen for OSC packets (actually not used for sending)
+const unsigned int outPort = 5005;          // remote port to receive OSC
+const unsigned int localPort = 5005;        // local port to listen for OSC packets (actually not used for sending)
 
 void reconnect (){
   while (WiFi.status() != WL_CONNECTED) {
@@ -78,7 +81,15 @@ void get_BPM() {
   }
 }
 
+void get_BPM_mock() {
+  send_OSC(80);
+  Serial.println("send");
+  delay(1000);
+}
+
 void setup() {
+  pinMode(WARNING_MOCK_LED, OUTPUT);
+  Serial.begin(115200);
   WiFi.begin(ssid, pass);
   reconnect ();
   Serial.println("WiFi connected");
@@ -89,13 +100,23 @@ void setup() {
   Udp.begin(localPort);
   Serial.print("Local port: ");
   Serial.println(Udp.localPort());
-
-  particleSensor.setup(); //Configure sensor with default settings
-  particleSensor.setPulseAmplitudeRed(0x0A); //Turn Red LED to low to indicate sensor is running
-  particleSensor.setPulseAmplitudeGreen(0); //Turn off Green LED
+  if (!particleSensor.begin(Wire, I2C_SPEED_STANDARD)) {
+    Serial.println("MAX30105 not found, please check connections/power");   // Report if not found
+    Serial.println("Mocking...");
+    digitalWrite(WARNING_MOCK_LED, LOW);
+    mock = true;
+  }
+  else {
+    particleSensor.setup(); //Configure sensor with default settings
+    particleSensor.setPulseAmplitudeRed(0x0A); //Turn Red LED to low to indicate sensor is running
+    particleSensor.setPulseAmplitudeGreen(0); //Turn off Green LED*/
+  }
   last = millis();
 }
 
 void loop() {
-  get_BPM();
+  reconnect ();
+  if(mock) get_BPM_mock();
+  else get_BPM();
+
 }

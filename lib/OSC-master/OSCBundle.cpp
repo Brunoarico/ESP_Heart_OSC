@@ -30,7 +30,7 @@
 	CONSTRUCTORS / DESTRUCTOR
 =============================================================================*/
 
-OSCBundle::OSCBundle(uint64_t _timetag){
+OSCBundle::OSCBundle(osctime_t _timetag){
     setTimetag(_timetag);
     numMessages = 0;
     error = OSC_OK;
@@ -50,7 +50,7 @@ OSCBundle::~OSCBundle(){
 }
 
 //clears all of the OSCMessages inside
-void OSCBundle::empty(){
+OSCBundle& OSCBundle::empty(){
     error = OSC_OK;
     for (int i = 0; i < numMessages; i++){
         OSCMessage * msg = getOSCMessage(i);
@@ -58,14 +58,16 @@ void OSCBundle::empty(){
     }
     free(messages);
     messages = NULL;
+    clearIncomingBuffer();
     numMessages = 0;
+    return *this;
 }
 
 /*=============================================================================
  SETTERS
  =============================================================================*/
 
-OSCMessage & OSCBundle::add(char * _address){
+OSCMessage & OSCBundle::add(const char * _address){
 	OSCMessage * msg = new OSCMessage(_address);
     if (!msg->hasError()){
         //realloc the array to fit the message
@@ -96,7 +98,7 @@ OSCMessage & OSCBundle::add(){
 }
 
 OSCMessage & OSCBundle::add(OSCMessage & _msg){
-    OSCMessage * msg = new OSCMessage(_msg);
+    OSCMessage * msg = new OSCMessage(&_msg);
     if (!msg->hasError()){
         //realloc the array to fit the message
         OSCMessage ** messageMem = (OSCMessage **) realloc(messages, sizeof(OSCMessage *) * (numMessages + 1));
@@ -123,6 +125,7 @@ OSCMessage * OSCBundle::getOSCMessage( char * addr){
             return msg;
         }
 	}
+	return NULL;
 }
 
 //the position is the same as the order they were declared in
@@ -130,6 +133,7 @@ OSCMessage * OSCBundle::getOSCMessage(int pos){
 	if (pos < numMessages){
 		return messages[pos];
 	} 
+	return NULL;
 }
 
 /*=============================================================================
@@ -141,7 +145,7 @@ bool OSCBundle::dispatch(const char * pattern, void (*callback)(OSCMessage&), in
 	bool called = false;
 	for (int i = 0; i < numMessages; i++){
         OSCMessage msg = getOSCMessage(i);
-		called |= msg.dispatch(pattern, callback, initial_offset);
+		called = msg.dispatch(pattern, callback, initial_offset) || called ;
 	}
 	return called;
 }
@@ -151,7 +155,7 @@ bool OSCBundle::route(const char * pattern, void (*callback)(OSCMessage&, int), 
 	bool called = false;
 	for (int i = 0; i < numMessages; i++){
         OSCMessage msg = getOSCMessage(i);
-		called |= msg.route(pattern, callback, initial_offset);
+		called =  msg.route(pattern, callback, initial_offset) || called;
 	}
 	return called;
 }
@@ -188,43 +192,53 @@ OSCErrorCode OSCBundle::getError(){
  SENDING
  =============================================================================*/
 
-void OSCBundle::send(Print &p){
+OSCBundle& OSCBundle::send(Print &p){
     //don't send a bundle with errors
     if (hasError()){
-        return;
+        return *this;
     }
     //write the bundle header
     static uint8_t header[] = {'#', 'b', 'u', 'n', 'd', 'l', 'e', 0};
     p.write(header, 8);
     //write the timetag
-    uint64_t t64 = BigEndian(timetag);
-    uint8_t * tptr = (uint8_t *) &t64;
-    p.write(tptr, 8);
+{
+    osctime_t time =  timetag;
+    uint32_t d = BigEndian(time.seconds);
+    uint8_t * ptr = (uint8_t *)    &d;
+    p.write(ptr, 4);
+    d = BigEndian(time.fractionofseconds);
+    ptr = (uint8_t *)    &d;
+    p.write(ptr, 4);
+}
+
     //send the messages
     for (int i = 0; i < numMessages; i++){
         OSCMessage * msg = getOSCMessage(i);
         int msgSize = msg->bytes();
         //turn the message size into a pointer
-        uint64_t s32 = BigEndian((uint32_t) msgSize);
+        uint32_t s32 = BigEndian((uint32_t) msgSize);
         uint8_t * sptr = (uint8_t *) &s32;
-        //write the messsage size
+        //write the message size
         p.write(sptr, 4);
         msg->send(p);
     }
+    return *this;
 }
 
 /*=============================================================================
     FILLING
  =============================================================================*/
 
-void OSCBundle::fill(uint8_t incomingByte){
+OSCBundle& OSCBundle::fill(uint8_t incomingByte){
     decode(incomingByte);
+    return *this;
 }
 
-void OSCBundle::fill(uint8_t * incomingBytes, int length){
+OSCBundle& OSCBundle::fill(const uint8_t * incomingBytes, int length){
     while (length--){
         decode(*incomingBytes++);
     }
+    return *this;
 }
 
 /*=============================================================================
@@ -235,7 +249,7 @@ void OSCBundle::decodeTimetag(){
     //parse the incoming buffer as a uint64
     setTimetag(incomingBuffer);
     //make sure the endianness is right
-    timetag = BigEndian(timetag);
+    //xxx time tag    timetag = BigEndian(timetag);
     decodeState = MESSAGE_SIZE;
     clearIncomingBuffer();
 }
@@ -277,6 +291,8 @@ void OSCBundle::decode(uint8_t incomingByte){
             if (incomingByte == '#'){
                 decodeState = HEADER;
             } else if (incomingByte == '/'){
+                add();//add a simple message to the bundle
+                decodeMessage(incomingByte);
                 decodeState = MESSAGE;
             }
             break;

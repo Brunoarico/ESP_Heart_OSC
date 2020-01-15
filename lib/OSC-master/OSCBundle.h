@@ -1,6 +1,6 @@
 /*
  Written by Yotam Mann, The Center for New Music and Audio Technologies,
- University of California, Berkeley.  Copyright (c) 2012, The Regents of
+ University of California, Berkeley.  Copyright (c) 2012, 2013, The Regents of
  the University of California (Regents).
  
  Permission to use, copy, modify, distribute, and distribute modified versions
@@ -20,7 +20,7 @@
  HEREUNDER IS PROVIDED "AS IS". REGENTS HAS NO OBLIGATION TO PROVIDE
  MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
  
- For bug reports and feature requests please email me at yotam@cnmat.berkeley.edu
+
  */
 
 #ifndef OSCBUNDLE_h
@@ -28,6 +28,7 @@
 
 #include "OSCMessage.h"
 
+extern osctime_t zerotime;
 class OSCBundle
 {
 
@@ -43,7 +44,7 @@ private:
 	//the number of messages in the array
 	int numMessages;
     
-    uint64_t timetag;
+    osctime_t timetag;
     
     //error codes
     OSCErrorCode error;
@@ -89,32 +90,34 @@ public:
 	CONSTRUCTORS / DESTRUCTOR
 =============================================================================*/
 		
-    //default timetag of 1
-  	OSCBundle(uint64_t = 1);
+    //default timetag of
+      	OSCBundle(osctime_t = zerotime);
 
 	//DESTRUCTOR
 	~OSCBundle();
 
     //clears all of the OSCMessages inside
-    void empty();
+    OSCBundle& empty();
 	
 /*=============================================================================
     SETTERS
 =============================================================================*/
     
 	//start a new OSC Message in the bundle
-    OSCMessage & add( char * address);
+    OSCMessage & add(const char * address);
     //add with nothing in it produces an invalid osc message
 	//copies an existing message into the bundle
 	OSCMessage & add(OSCMessage & msg);
     
     template <typename T>
-    void setTimetag(T t){
-        timetag = (uint64_t) t;
+    OSCBundle& setTimetag(T t){
+        timetag = (osctime_t) t;
+        return *this;
     }
     //sets the timetag from a buffer
-    void setTimetag(uint8_t * buff){
+    OSCBundle& setTimetag(uint8_t * buff){
         memcpy(&timetag, buff, 8);
+        return *this;
     }
     
 /*=============================================================================
@@ -158,15 +161,15 @@ public:
     SENDING
  =============================================================================*/
     
-    void send(Print &p);
+    OSCBundle& send(Print &p);
     
 /*=============================================================================
     FILLING
  =============================================================================*/
     
-    void fill(uint8_t incomingByte);
+    OSCBundle& fill(uint8_t incomingByte);
     
-    void fill(uint8_t * incomingBytes, int length);
+    OSCBundle& fill(const uint8_t * incomingBytes, int length);
 };
 
 #endif
