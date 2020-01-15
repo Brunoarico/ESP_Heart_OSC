@@ -5,6 +5,7 @@
 #include <Wire.h>
 #include <MAX30105.h>
 #include <heartRate.h>
+#include <ESP8266WebServer.h>
 
 #define MY_ID "/BPM1"
 #define WARNING_MOCK_LED LED_BUILTIN
@@ -14,10 +15,12 @@ char pass[] = "makerLab*";         // your network password
 
 WiFiUDP Udp;
 
+
+ESP8266WebServer server(80);
+
+
 MAX30105 particleSensor;
-
 bool mock = false;
-
 const byte RATE_SIZE = 20; //Increase this for more averaging. 4 is good.
 float rates[RATE_SIZE]; //Array of heart rates
 byte rateSpot = 0;
@@ -34,6 +37,30 @@ const IPAddress outIp(192,168,0,231);        // remote IP of your computer
 //this should match the port to listen on in the python sketch
 const unsigned int outPort = 5005;          // remote port to receive OSC
 const unsigned int localPort = 5005;        // local port to listen for OSC packets (actually not used for sending)
+
+String mainPage(){
+  String ptr = "<!DOCTYPE html>\n";
+  ptr +="<html>\n";
+  ptr +="<head>\n";
+  ptr +="<title>Empatias mapeadas</title>\n";
+  ptr +="</head>\n";
+  ptr +="<body>\n";
+  ptr +="<h1>Empatias mapeadas</h1>\n";
+  ptr +="<form action=\"/submit\"method=\"GET\">\n";
+  ptr +="<p>Numero do modulo:</p>\n";
+  ptr +="<input type=\"textarea\" name=\"number\">\n";
+  ptr +="<p></p>\n";
+  ptr +="<input type=\"submit\" value=\"Done\">\n";
+  ptr +="</form>\n";
+  ptr +="</body>\n";
+  ptr +="</html>\n";
+  return ptr;
+}
+
+
+void serveMainPage() {
+  server.send(200, "text/html", mainPage());
+}
 
 void reconnect (){
   while (WiFi.status() != WL_CONNECTED) {
@@ -53,7 +80,7 @@ void send_OSC (int value) {
 
 void send_OSC_bang () {
   OSCMessage msg(MY_ID);
-  msg.add("800 1");
+  msg.add("750");
   Udp.beginPacket(outIp, outPort);
   msg.send(Udp);
   Udp.endPacket();
@@ -106,7 +133,6 @@ void setup() {
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
-
   Serial.println("Starting UDP");
   Udp.begin(localPort);
   Serial.print("Local port: ");
@@ -117,16 +143,20 @@ void setup() {
     digitalWrite(WARNING_MOCK_LED, LOW);
     mock = true;
   }
+
   else {
     particleSensor.setup(); //Configure sensor with default settings
     particleSensor.setPulseAmplitudeRed(0x0A); //Turn Red LED to low to indicate sensor is running
     particleSensor.setPulseAmplitudeGreen(0); //Turn off Green LED*/
   }
   last = millis();
+  server.on("/", serveMainPage);
+  server.begin();
 }
 
 void loop() {
   reconnect ();
+  server.handleClient();
   if(mock) get_BPM_mock();
   else get_BPM();
 

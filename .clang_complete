@@ -1,9 +1,10 @@
 -I/home/aviador/Documents/PlatformIO/Projects/ESP_Heart_OSC/include
 -I/home/aviador/Documents/PlatformIO/Projects/ESP_Heart_OSC/src
 -I/home/aviador/Documents/PlatformIO/Projects/ESP_Heart_OSC/lib/SparkFun_MAX3010x_Sensor_Library-master/src
--I/home/aviador/.platformio/packages/framework-arduinoespressif8266/libraries/ESP8266WiFi/src
--I/home/aviador/Documents/PlatformIO/Projects/ESP_Heart_OSC/lib/OSC-master
 -I/home/aviador/.platformio/packages/framework-arduinoespressif8266/libraries/Wire
+-I/home/aviador/Documents/PlatformIO/Projects/ESP_Heart_OSC/lib/OSC-master
+-I/home/aviador/.platformio/packages/framework-arduinoespressif8266/libraries/ESP8266WebServer/src
+-I/home/aviador/.platformio/packages/framework-arduinoespressif8266/libraries/ESP8266WiFi/src
 -I/home/aviador/.platformio/packages/framework-arduinoespressif8266/tools/sdk/include
 -I/home/aviador/.platformio/packages/framework-arduinoespressif8266/tools/sdk/libc/xtensa-lx106-elf/include
 -I/home/aviador/.platformio/packages/framework-arduinoespressif8266/cores/esp8266
@@ -19,7 +20,6 @@
 -I/home/aviador/.platformio/packages/framework-arduinoespressif8266/libraries/ESP8266NetBIOS
 -I/home/aviador/.platformio/packages/framework-arduinoespressif8266/libraries/ESP8266SSDP
 -I/home/aviador/.platformio/packages/framework-arduinoespressif8266/libraries/ESP8266SdFat/src
--I/home/aviador/.platformio/packages/framework-arduinoespressif8266/libraries/ESP8266WebServer/src
 -I/home/aviador/.platformio/packages/framework-arduinoespressif8266/libraries/ESP8266WiFiMesh/src
 -I/home/aviador/.platformio/packages/framework-arduinoespressif8266/libraries/ESP8266httpUpdate/src
 -I/home/aviador/.platformio/packages/framework-arduinoespressif8266/libraries/ESP8266mDNS/src
