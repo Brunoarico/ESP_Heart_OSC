@@ -6,8 +6,9 @@
 #include <MAX30105.h>
 #include <heartRate.h>
 #include <ESP8266WebServer.h>
+#include <EEPROM.h>
 
-#define MY_ID "/BPM1"
+#define BPM_ADDRESS "/BPM"
 #define WARNING_MOCK_LED LED_BUILTIN
 
 char ssid[] = "Teste-Lab";          // your network SSID (name)
@@ -15,9 +16,7 @@ char pass[] = "makerLab*";         // your network password
 
 WiFiUDP Udp;
 
-
 ESP8266WebServer server(80);
-
 
 MAX30105 particleSensor;
 bool mock = false;
@@ -30,6 +29,7 @@ float init_val = 80;
 float beatAvg = init_val;
 unsigned long int last = 0;
 
+uint8_t nodeIndex = 0;
 
 /* YOU WILL NEED TO CHANGE THIS TO YOUR COMPUTER'S IP! */
 const IPAddress outIp(192,168,0,231);        // remote IP of your computer
@@ -46,9 +46,11 @@ String mainPage(){
   ptr +="</head>\n";
   ptr +="<body>\n";
   ptr +="<h1>Empatias mapeadas</h1>\n";
-  ptr +="<form action=\"/submit\"method=\"GET\">\n";
+  ptr +="<form action=\"/submit\"method=\"POST\">\n";
   ptr +="<p>Numero do modulo:</p>\n";
   ptr +="<input type=\"textarea\" name=\"number\">\n";
+  ptr +="<p>Mock?</p>\n";
+  ptr +="<input type=\"checkbox\" name=\"mock\">\n";
   ptr +="<p></p>\n";
   ptr +="<input type=\"submit\" value=\"Done\">\n";
   ptr +="</form>\n";
@@ -62,6 +64,37 @@ void serveMainPage() {
   server.send(200, "text/html", mainPage());
 }
 
+void
+handleSubmit() {
+  if (server.args() > 0 ) {
+    // strncpy(ssid, server.arg("ssid").c_str(), 32);
+    // strncpy(password, server.arg("password").c_str(), 32);
+    // address = server.arg("address").toInt();
+    // FIX: AP/station mode will mark config byte
+    // strncpy(projectName, server.arg("projectName").c_str(), 32);
+    // server.send(200, "text/html", statusPage());
+    nodeIndex = (uint8_t) server.arg("number").toInt();
+    if (server.arg("mock") == "on") mock = true;
+    else mock = false;
+
+    saveEEPROM();
+    // delay(2000);
+    // WiFi.disconnect();
+    // WiFi.softAPdisconnect(true);
+    // delay(100);
+    // ESP.restart();
+    server.send(200, "text/plain", "Done!");
+  }
+  else server.send(200, "text/plain", "Empty arguments, try again!");
+}
+
+void startHTTP() {
+  server.on("/", serveMainPage);
+  server.on("/submit", handleSubmit);
+  server.begin();
+  Serial.println("HTTP server started");
+}
+
 void reconnect (){
   while (WiFi.status() != WL_CONNECTED) {
         delay(500);
@@ -70,7 +103,9 @@ void reconnect (){
 }
 
 void send_OSC (int value) {
-  OSCMessage msg(MY_ID);
+  char address[32];
+  sprintf(address, "/BPM%d", nodeIndex);
+  OSCMessage msg(address);
   msg.add(value);
   Udp.beginPacket(outIp, outPort);
   msg.send(Udp);
@@ -79,7 +114,9 @@ void send_OSC (int value) {
 }
 
 void send_OSC_bang () {
-  OSCMessage msg(MY_ID);
+  char address[32];
+  sprintf(address, "/BPM%d", nodeIndex);
+  OSCMessage msg(address);
   msg.add("750");
   Udp.beginPacket(outIp, outPort);
   msg.send(Udp);
@@ -125,11 +162,33 @@ void get_BPM_mock() {
   delay(750);
 }
 
+/**
+ *  readEEPROM - starts EEPROM, fetches data and reads it back from RAM
+ */
+void readEEPROM() {
+  EEPROM.begin(1);
+  Serial.printf("\n\nReading EEPROM:\n");
+  EEPROM.get(0, nodeIndex);
+  Serial.printf("nodeIndex = %d\n",nodeIndex);
+  EEPROM.end();
+}
+
+/**
+ *  saveEEPROM - starts EEPROM, stores data and reads it back from emulated EEPROM
+ */
+void saveEEPROM() {
+  EEPROM.begin(1);
+  Serial.printf("\n\nStoring EEPROM:\n");
+  EEPROM.put(0, nodeIndex);
+  Serial.printf("nodeIndex = %d\n", EEPROM.get(0, nodeIndex));
+  EEPROM.end();
+}
+
 void setup() {
   pinMode(WARNING_MOCK_LED, OUTPUT);
   Serial.begin(115200);
   WiFi.begin(ssid, pass);
-  reconnect ();
+  reconnect();
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
@@ -150,14 +209,13 @@ void setup() {
     particleSensor.setPulseAmplitudeGreen(0); //Turn off Green LED*/
   }
   last = millis();
-  server.on("/", serveMainPage);
-  server.begin();
+  readEEPROM();
+  startHTTP();
 }
 
 void loop() {
   reconnect ();
   server.handleClient();
-  if(mock) get_BPM_mock();
+  if (mock) get_BPM_mock();
   else get_BPM();
-
 }
