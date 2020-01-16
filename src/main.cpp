@@ -59,13 +59,33 @@ String mainPage(){
   return ptr;
 }
 
-
 void serveMainPage() {
   server.send(200, "text/html", mainPage());
 }
 
-void
-handleSubmit() {
+/**
+ *  readEEPROM - starts EEPROM, fetches data and reads it back from RAM
+ */
+void readEEPROM() {
+  EEPROM.begin(1);
+  Serial.printf("\n\nReading EEPROM:\n");
+  EEPROM.get(0, nodeIndex);
+  Serial.printf("nodeIndex = %d\n",nodeIndex);
+  EEPROM.end();
+}
+
+/**
+ *  saveEEPROM - starts EEPROM, stores data and reads it back from emulated EEPROM
+ */
+void saveEEPROM() {
+  EEPROM.begin(1);
+  Serial.printf("\n\nStoring EEPROM:\n");
+  EEPROM.put(0, nodeIndex);
+  Serial.printf("nodeIndex = %d\n", EEPROM.get(0, nodeIndex));
+  EEPROM.end();
+}
+
+void handleSubmit() {
   if (server.args() > 0 ) {
     // strncpy(ssid, server.arg("ssid").c_str(), 32);
     // strncpy(password, server.arg("password").c_str(), 32);
@@ -160,28 +180,6 @@ void get_BPM_mock() {
   send_OSC_bang();
   Serial.println("send");
   delay(750);
-}
-
-/**
- *  readEEPROM - starts EEPROM, fetches data and reads it back from RAM
- */
-void readEEPROM() {
-  EEPROM.begin(1);
-  Serial.printf("\n\nReading EEPROM:\n");
-  EEPROM.get(0, nodeIndex);
-  Serial.printf("nodeIndex = %d\n",nodeIndex);
-  EEPROM.end();
-}
-
-/**
- *  saveEEPROM - starts EEPROM, stores data and reads it back from emulated EEPROM
- */
-void saveEEPROM() {
-  EEPROM.begin(1);
-  Serial.printf("\n\nStoring EEPROM:\n");
-  EEPROM.put(0, nodeIndex);
-  Serial.printf("nodeIndex = %d\n", EEPROM.get(0, nodeIndex));
-  EEPROM.end();
 }
 
 void setup() {
