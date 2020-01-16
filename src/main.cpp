@@ -133,11 +133,11 @@ void send_OSC (int value) {
   msg.empty();
 }
 
-void send_OSC_bang () {
+void send_OSC_bang (int val) {
   char address[32];
   sprintf(address, "/BPM%d", nodeIndex);
   OSCMessage msg(address);
-  msg.add("750");
+  msg.add(val);
   Udp.beginPacket(outIp, outPort);
   msg.send(Udp);
   Udp.endPacket();
@@ -145,6 +145,7 @@ void send_OSC_bang () {
 }
 
 void get_BPM() {
+  Serial.println("oi");
   long irValue = particleSensor.getIR();
   //Check for a beat
   if (checkForBeat(irValue) == true) {
@@ -168,7 +169,7 @@ void get_BPM() {
     //mocking hearbeat
     if(millis() - last > (1000.0 / (beatAvg/60.0))) {
       //send_OSC(beatAvg);
-      send_OSC_bang();
+      send_OSC_bang(1000.0 / (beatAvg/60.0));
       Serial.println("Beat! " + String(millis() - last) + " "+  String(1000.0 / (beatAvg/60.0)));
       last = millis();
     }
@@ -177,7 +178,7 @@ void get_BPM() {
 
 void get_BPM_mock() {
   //send_OSC(80);
-  send_OSC_bang();
+  send_OSC_bang(750);
   Serial.println("send");
   delay(750);
 }
