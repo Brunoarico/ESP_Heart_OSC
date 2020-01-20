@@ -1,11 +1,13 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
+#include <ESP8266mDNS.h>
 #include <OSCMessage.h>
 #include <Wire.h>
 #include <MAX30105.h>
 #include <heartRate.h>
 #include <ESP8266WebServer.h>
+#include <ArduinoOTA.h>
 #include <EEPROM.h>
 
 #define BPM_ADDRESS "/BPM"
@@ -122,6 +124,12 @@ void reconnect (){
     }
 }
 
+void OTA_config() {
+  ArduinoOTA.setHostname("empatias1");
+  //ArduinoOTA.setPassword((const char *)"wannarockyou");
+  ArduinoOTA.begin();
+}
+
 void send_OSC (int value) {
   char address[32];
   sprintf(address, "/BPM%d", nodeIndex);
@@ -145,7 +153,6 @@ void send_OSC_bang (int val) {
 }
 
 void get_BPM() {
-  Serial.println("oi");
   long irValue = particleSensor.getIR();
   //Check for a beat
   if (checkForBeat(irValue) == true) {
@@ -170,7 +177,7 @@ void get_BPM() {
     if(millis() - last > (1000.0 / (beatAvg/60.0))) {
       //send_OSC(beatAvg);
       send_OSC_bang(1000.0 / (beatAvg/60.0));
-      Serial.println("Beat! " + String(millis() - last) + " "+  String(1000.0 / (beatAvg/60.0)));
+      Serial.println("Beat! IBI: "+  String(1000.0 / (beatAvg/60.0)));
       last = millis();
     }
   }
@@ -185,6 +192,7 @@ void get_BPM_mock() {
 
 void setup() {
   pinMode(WARNING_MOCK_LED, OUTPUT);
+  digitalWrite(WARNING_MOCK_LED, HIGH);
   Serial.begin(115200);
   WiFi.begin(ssid, pass);
   reconnect();
@@ -201,7 +209,6 @@ void setup() {
     digitalWrite(WARNING_MOCK_LED, LOW);
     mock = true;
   }
-
   else {
     particleSensor.setup(); //Configure sensor with default settings
     particleSensor.setPulseAmplitudeRed(0x0A); //Turn Red LED to low to indicate sensor is running
@@ -210,10 +217,12 @@ void setup() {
   last = millis();
   readEEPROM();
   startHTTP();
+  OTA_config();
 }
 
 void loop() {
   reconnect ();
+  ArduinoOTA.handle();
   server.handleClient();
   if (mock) get_BPM_mock();
   else get_BPM();
